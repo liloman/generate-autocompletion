@@ -20,19 +20,6 @@ run $b
 [[ ${lines[0]} = "Needs arguments. Try generate-autocompletion.sh -h" ]] 
 }
 
-@test "command without --help" {
-run $g 
-(( $status == 1 ))
-[[ ${lines[0]} = "Option -t needs an argument" ]] 
-}
-
-@test "command without --help" {
-run $g 
-(( $status == 1 ))
-[[ ${lines[0]} = "Option -t needs an argument" ]] 
-}
-
-
 @test "command without options/verbs" {
 run $g type
 (( $status == 0 ))
@@ -41,6 +28,12 @@ run $g type
 [[ ${lines[2]} = "[ARG]=''" ]]
 [[ ${lines[3]} = "[VSTANDALONE]=''" ]]
 [[ ${lines[4]} = "[VFLAG]=''" ]]
+}
+
+@test "command without software" {
+run $g 
+(( $status == 1 ))
+[[ ${lines[0]} = "Option -t needs an argument" ]] 
 }
 
 
@@ -82,12 +75,49 @@ run $g tee
 #  VERBS  #
 ###########
 
-@test "command with standalone verbs " {
+@test "command with verbs 1" {
+run $g networkctl
+(( $status == 0 ))
+[[ ${lines[0]} = " " ]] 
+[[ ${lines[1]} = "[STANDALONE]='-h --help --version --no-pager --no-legend -a --all'" ]]
+[[ ${lines[2]} = "[ARG]=''" ]]
+[[ ${lines[3]} = "[VSTANDALONE]='list lldp'" ]]
+[[ ${lines[4]} = "[VFLAG]='status'" ]]
+}
+
+@test "command with verbs 2" {
 run $g systemd-analyze
 (( $status == 0 ))
 [[ ${lines[0]} = " " ]] 
 [[ ${lines[1]} = "[STANDALONE]='-h --help --version --no-pager --system --user --order --require'" ]]
 [[ ${lines[2]} = "[ARG]='-H --host=[USER@]HOST -M --machine=CONTAINER --from-pattern=GLOB --to-pattern=GLOB --fuzz=SECONDS --man[=BOOL]'" ]]
-[[ ${lines[3]} = "[VSTANDALONE]='time blame critical-chain plot dot set-log-level dump verify'" ]]
+[[ ${lines[3]} = "[VSTANDALONE]='time blame critical-chain plot dot dump'" ]]
+[[ ${lines[4]} = "[VFLAG]='set-log-level verify'" ]]
+}
+
+@test "command with verbs 3" {
+run $g loginctl
+(( $status == 0 ))
+[[ ${lines[0]} = " " ]] 
+[[ ${lines[1]} = "[STANDALONE]='-h --help --version --no-pager --no-legend --no-ask-password -a --all -l --full'" ]]
+[[ ${lines[2]} = "[ARG]='-H --host=[USER@]HOST -M --machine=CONTAINER -p --property=NAME --kill-who=WHO -s --signal=SIGNAL -n --lines=INTEGER -o --output=STRING'" ]]
+[[ ${lines[3]} = "[VSTANDALONE]='list-sessions lock-sessions unlock-sessions list-users list-seats flush-devices'" ]]
+[[ ${lines[4]} = "[VFLAG]='session-status show-session activate lock-session unlock-session terminate-session kill-session user-status show-user enable-linger disable-linger terminate-user kill-user seat-status show-seat attach terminate-seat'" ]]
+}
+
+############
+#  EXTRAS  #
+############
+
+
+@test "command without autocompletion already" {
+run $g stat
+(( $status == 0 ))
+[[ ${lines[0]} = " " ]] 
+[[ ${lines[1]} = "[STANDALONE]='-L --dereference -f --file-system -t --terse --help --version'" ]]
+[[ ${lines[2]} = "[ARG]='-c --format=FORMAT --printf=FORMAT'" ]]
+[[ ${lines[3]} = "[VSTANDALONE]=''" ]]
 [[ ${lines[4]} = "[VFLAG]=''" ]]
 }
+
+

@@ -1,8 +1,8 @@
-#!/bin/bash 
+#!/usr/bin/env bash
 #
 # Generate automagically bash autocompletion for a command
 
-#Version 0.1 Initial
+#Version 0.1 Initial with options and verbs working
 
 __version=0.1
 software=${0##*/}
@@ -11,7 +11,7 @@ software=${0##*/}
 function generate_case_arg(){
 local com=$1
 
-for arg in $(get_options_type $com "arg")
+for arg in $(get_options_type $com "arg" "join")
 do
     echo -n "
     $arg)
@@ -20,11 +20,14 @@ do
 done
 }
 
+#Detect option type, standalone (without arg) o arg
 function get_options_type(){
 local args com=$1 regex line cleaned out
 local regex
 local -a arr
 local type=$2
+local join=$3
+local joins=
 local stand='(-){1,2}([-[:alnum:]]+)([,[:space:]]+)([-[:alnum:]]+)'; 
 
 mapfile -t args <<< "$(get_options $com)"
@@ -38,7 +41,7 @@ else #standalone options can't include '[' or '='
     regex='*=*'
 fi
 
-# [[ $type != arg ]] && set -x
+# [[ $type = arg ]] && set -x
 
 local total=$((${#args[@]}-1))
 for num in $(eval echo {0..$total}); 
@@ -46,24 +49,36 @@ do
     line=${args[num]}
     #option with args
     if [[ $type == arg  &&  $line =~ $regex ]] ; then
-        #ugly but any other way???
-        for w in $line; do [[ $w == -* ]] &&  arr=("${arr[@]}" "${w//,/}") || break; done
+        if [[ -z $join ]]; then # It is generating normal autocompletion
+            for w in $line; do [[ $w == -* ]] &&  arr=("${arr[@]}" "${w//,/}") || break; done
+        else #It is generating cases for flags (verbs with args)
+            for w in $line; do 
+                if [[ $w == -* ]]; then 
+                    [[ -n $joins ]] && joins+="|${w//,/}" 
+                    [[ -z $joins ]] && joins="${w//,/}" 
+                else
+                    arr=("${arr[@]}" "$joins") 
+                    joins=
+                    break; 
+                fi
+            done
+        fi
     fi
     # option without args (standalone)
     if [[ $type != arg  &&  $line != $regex ]] ; then
         if [[ $line =~ $stand ]]; then
             out="${BASH_REMATCH[0]}"
-            #ugly but any other way???
             for w in $out; do [[ $w == -* ]] &&  arr=("${arr[@]}" "${w//,/}") || break; done
         fi
     fi
 done
-# [[ $type != arg ]] && set +x
+# [[ $type = arg ]] && set +x
 
 echo "${arr[@]}"
 }
 
 
+#Detect verb type, standalone (without flag) o flag
 function get_verbs_type(){
 local args com=$1 regex value
 local regex
@@ -72,9 +87,9 @@ local type=$2
 
 if [[ $type == flag ]];
 then
-    regex='^([-_[:alnum:]]+)(=)([[:alnum:]]+)'
+    regex='^([[:space:]]){2,3}([-_[:alnum:]]+)(=|[[:space:]])(\[?)([[:alnum:]]+)(]?)'
 else
-    regex='^([-_[:alnum:]]+)$'
+    regex='^([[:space:]]){2,3}([-_[:alnum:]]+)([[:space:]]){2,}'
 fi
 
 mapfile -t args <<< "$(get_verbs $com)"
@@ -85,18 +100,41 @@ mapfile -t args <<< "$(get_verbs $com)"
 local total=$((${#args[@]}-1))
 for num in $(eval echo {0..$total}); 
 do 
-    value=${args[num]}
-    [[ $value =~ $regex ]] && arr=("${arr[@]}" "${BASH_REMATCH[1]}") 
+    value="${args[num]}"
+    [[ $value =~ $regex ]] && arr=("${arr[@]}" "${BASH_REMATCH[2]}") 
 
 done
 # [[ $type = flag ]] && set +x
+
 echo "${arr[@]}"
 }
 
 function generate_template(){
-local com=$1  output
+local com=$1 dir file
+hash $com &>/dev/null || { echo "$com not found"; return; }
 
-[[ ! $com ]] && { echo "$com not found"; return; }
+dir=${BASH_COMPLETION_USER_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion}/completions
+[[ -d $dir ]] || mkdir -p $dir
+file=$dir/$com
+
+
+#No easy way to detect bash autocompletion function from here...
+# [[ -f /usr/share/bash-completion/bash_completion ]] && . /usr/share/bash-completion/bash_completion
+#It will find in ${BASH_COMPLETION_USER_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion}/completions 
+
+# if declare -F _$com; then
+#     echo "_$com already exists"
+#     read -n 1 -p "Do you want to overwrite it (y/n)? " answer
+#     case ${answer} in
+#         y|Y )
+#             echo Overwriting so...
+#             ;;
+#         * )
+#             echo Exit.
+#             return
+#             ;;
+#     esac
+# fi
 
 echo "
 # $com(1) completion                                  -*- shell-script -*-
@@ -118,6 +156,13 @@ echo "
 # You should have received a copy of the GNU Lesser General Public License
 # along with systemd; If not, see <http://www.gnu.org/licenses/>.
 
+__contains_word () {
+        local w word=\$1; shift
+        for w in \"\$@\"; do
+                [[ \$w = \"\$word\" ]] && return
+        done
+}
+
 
 _$com () {
 local cur=\${COMP_WORDS[COMP_CWORD]} prev=\${COMP_WORDS[COMP_CWORD-1]}
@@ -128,7 +173,7 @@ local -A OPTS=(
 [ARG]='$(get_options_type $com "arg")'
 )
 
-if __contains_word "\$prev" \${OPTS[ARG]}; then
+if __contains_word \"\$prev\" \${OPTS[ARG]}; then
     case \$prev in
         $(generate_case_arg $com)
 esac
@@ -136,8 +181,8 @@ COMPREPLY=( \$(compgen -W '\$comps' -- "\$cur") )
 return 0
 fi
 
-if [[ "$cur" = -* ]]; then
-    COMPREPLY=( $(compgen -W '${OPTS[*]}' -- "$cur") )
+if [[ \"\$cur\" = -* ]]; then
+    COMPREPLY=( \$(compgen -W '\${OPTS[*]}' -- \"\$cur\") )
     return 0
 fi
 
@@ -147,28 +192,30 @@ local -A VERBS=(
 )
 
 for ((i=0; i < COMP_CWORD; i++)); do
-    if __contains_word "\${COMP_WORDS[i]}" \${VERBS[*]} &&
-        ! __contains_word "\${COMP_WORDS[i-1]}" \${OPTS[ARG]}; then
+    if __contains_word \"\${COMP_WORDS[i]}\" \${VERBS[*]} &&
+        ! __contains_word \"\${COMP_WORDS[i-1]}\" \${OPTS[ARG]}; then
     verb=\${COMP_WORDS[i]}
     break
+    fi
+done
+
+if   [[ -z \$verb ]]; then
+    comps=\"\${VERBS[*]}\"
+elif __contains_word "\$verb" \${VERBS[STANDALONE]}; then
+    comps=''
 fi
-        done
 
-        if   [[ -z \$verb ]]; then
-            comps="\${VERBS[*]}"
-        elif __contains_word "\$verb" \${VERBS[STANDALONE]}; then
-            comps=''
-        fi
+COMPREPLY=( \$(compgen -W '\$comps' -- \"\$cur\") )
+return 0
+}
 
-        COMPREPLY=( \$(compgen -W '\$comps' -- "\$cur") )
-        return 0
-    }
-
-    complete -F _$com $com
-    "
+complete -F _$com $com
+" > $file 
+echo "Run source $file or open a new terminal"
 }
 
 
+#Return the full lines with an option inside
 function get_options(){
 local com line 
 local regex='^([[:space:]]+)(-){1,2}([[:alnum:]]+)([,[:space:]]){,3}([-[:alnum:]]+)'
@@ -180,6 +227,7 @@ do
 done < <("${com[@]}" 2>&1)
 }
 
+#Return the full lines with an verb inside
 function get_verbs(){
 local com line arr found 
 local regex_verbs='^([[:space:]]){2,3}([[:alnum:]])(.*)'; 
@@ -187,24 +235,8 @@ com=($1 --help)
 
 while IFS= read -r line
 do
-    if [[ $line =~ $regex_verbs ]]; then
-        arr=(${line//[[:space:]]/ })
-        echo ${arr[0]}
-    fi
+    [[ $line =~ $regex_verbs ]] && echo "$line"
 done < <("${com[@]}" 2>&1)
-}
-
-function filter(){
-local value ret
-value=$1
-ret="true"
-
-#Shall it leave out -M and -H or not?
-[[ $value = -h || $value = --help 
-|| $value = -M || $value = -H 
-|| $value = --version ]] &&
-    ret="false"
-echo "$ret"
 }
 
 
