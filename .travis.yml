@@ -2,17 +2,16 @@ language: bash
 
 before_install:
   # To install bats and test our shell/bash functions
+  - sudo apt-get install python-software-properties
   - sudo add-apt-repository ppa:duggan/bats --yes
   - sudo apt-get update -qq
-  - sudo apt-get install -qq bats ls tee networkctl systemd-analyze loginctl stat
+  - sudo apt-get install -qq bats 
 
 # For bats functional tests
-env:
-  - functional_test="true"
 
 # command to run tests
 script:
-  - bats tests
+  - bats tests/ubuntu.bats
 
 notifications:
   email:
