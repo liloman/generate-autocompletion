@@ -208,7 +208,7 @@ return 0
 complete -F _$com $com
 " > $file 
 
-echo -e "To get the new autocompletion, open a new terminal or run:\nsource $file\n "
+echo -e "To get the new autocompletion, open a new terminal or run:\nsource ${file/$HOME/\~}\n"
 }
 
 
