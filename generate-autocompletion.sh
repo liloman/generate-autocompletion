@@ -110,18 +110,14 @@ echo "${arr[@]}"
 }
 
 function generate_template(){
-local com=$1 dir file
+local com=$1 dir file 
 hash $com &>/dev/null || { echo "$com not found"; return; }
 
 dir=${BASH_COMPLETION_USER_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion}/completions
 [[ -d $dir ]] || mkdir -p $dir
 file=$dir/$com
 
-
 #No easy way to detect bash autocompletion function from here...
-# [[ -f /usr/share/bash-completion/bash_completion ]] && . /usr/share/bash-completion/bash_completion
-#It will find in ${BASH_COMPLETION_USER_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion}/completions 
-
 # if declare -F _$com; then
 #     echo "_$com already exists"
 #     read -n 1 -p "Do you want to overwrite it (y/n)? " answer
@@ -139,22 +135,22 @@ file=$dir/$com
 echo "
 # $com(1) completion                                  -*- shell-script -*-
 #
-# This file is part of auto-autocompletion
+# This file is part of $software
 #
 # Copyright $(date +%Y) liloman <cual809@gmail.com>
 #
-# systemd is free software; you can redistribute it and/or modify it
+# $software is free software; you can redistribute it and/or modify it
 # under the terms of the GNU Lesser General Public License as published by
 # the Free Software Foundation; either version 2.1 of the License, or
 # (at your option) any later version.
 #
-# systemd is distributed in the hope that it will be useful, but
+# $software is distributed in the hope that it will be useful, but
 # WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 # General Public License for more details.
 #
 # You should have received a copy of the GNU Lesser General Public License
-# along with systemd; If not, see <http://www.gnu.org/licenses/>.
+# along with $software; If not, see <http://www.gnu.org/licenses/>.
 
 __contains_word () {
         local w word=\$1; shift
@@ -211,7 +207,8 @@ return 0
 
 complete -F _$com $com
 " > $file 
-echo "Run source $file or open a new terminal"
+
+echo -e "To get the new autocompletion, open a new terminal or run:\nsource $file\n "
 }
 
 
@@ -249,33 +246,41 @@ $software [ PROGRAM ]
 
 Generate automagically bash autocompletions
 
--h|help       Show this help
--t|test       Generate output for tests
--v|version    Show version
+ -h, --help  Show this help
+ -t  Generate output for tests
+ -v  Show version
 "
 } 
 
-while getopts ":hvt:" opt
-do
-    case $opt in
-        h) 
+# Use getopt to parse parameters
+if ! OPTIONS=$(getopt -n "$software" -o htv -l "help" -- "$@"); then
+    usage
+    exit 0
+fi
+
+eval set -- "${OPTIONS}"
+
+# And now parse options with while
+while true; do
+    case "$1" in
+        "--help"|"-h")
             usage; exit 0 ;;
-        v) 
-            echo version: $__version; exit 0 ;;
-        t)
+
+        "-t")
+             [[ -z $3 ]] && { echo "Option -t needs an argument";exit 1; }
+             hash $3 &>/dev/null || { echo "$3 not found"; exit 1; }
 echo " 
-[STANDALONE]='$(get_options_type $OPTARG "standalone")'
-[ARG]='$(get_options_type $OPTARG "arg")'
-[VSTANDALONE]='$(get_verbs_type $OPTARG "standalone")'
-[VFLAG]='$(get_verbs_type $OPTARG "flag")'"; 
+[STANDALONE]='$(get_options_type $3 "standalone")'
+[ARG]='$(get_options_type $3 "arg")'
+[VSTANDALONE]='$(get_verbs_type $3 "standalone")'
+[VFLAG]='$(get_verbs_type $3 "flag")'"; 
 exit ;;
-        \?)
-            echo -e "\n Incorrect option $OPTARG\n"; usage; exit 1 ;;
-        :)  
-            echo "Option -$OPTARG needs an argument"; exit 1 ;;
+        "-v") 
+            echo version: $__version; exit 0 ;;
+        "--")
+            shift; break ;;
     esac   
 done
-shift $(($OPTIND-1))
 
 [[ $# -eq 0 ]] && { echo Needs arguments. Try $software -h; exit 1;  }
 generate_template $1
