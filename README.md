@@ -12,6 +12,7 @@ cd generate-autocompletion
 ./generate-autocompletion stat
 source ~/.local/share/bash-completion/completions/stat
 ```
+![Screencast](https://github.com/liloman/generate-autocompletion/raw/master/images/cast.gif "Screencast")
 
 ##Install
 

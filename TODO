@@ -1,0 +1,3 @@
+
+*Recheck results against man pages also to detect false positives
+*Able to parse commands like cpupower with "old output style"
