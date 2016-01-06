@@ -154,7 +154,7 @@ echo "
 
 __contains_word () {
         local w word=\$1; shift
-        for w in \"\$@\"; do
+        for w; do
                 [[ \$w = \"\$word\" ]] && return
         done
 }
