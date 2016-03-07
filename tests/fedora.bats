@@ -11,7 +11,7 @@ load test_helper
 #  BASIC  #
 ###########
 
-b=generate-autocompletion.sh
+b=./generate-autocompletion.sh
 g="$b -t"
 
 @test "command without arguments" {
