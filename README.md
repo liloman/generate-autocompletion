@@ -48,7 +48,7 @@ Should output something like:
 ##TODO
 
 
-- [ ] Implement something like [zsh auto fu](https://github.com/hchbaw/auto-fu.zsh) with [bash simple curses](https://github.com/metal3d/bashsimplecurses)  
+- [ ] Implement something like [zsh auto fu](https://github.com/hchbaw/auto-fu.zsh) with [bash simple curses](https://github.com/metal3d/bashsimplecurses) or via bash plugin (ctypes.sh way)
 - [ ] Recheck results against man pages also to detect false positives
 - [ ] Able to parse commands like cpupower with "old output style"
 
