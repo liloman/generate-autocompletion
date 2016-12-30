@@ -169,12 +169,14 @@ local -A OPTS=(
 [ARG]='$(get_options_type $com "arg")'
 )
 
+if [[ -n \${OPTS[ARG]} ]]; then
 if __contains_word \"\$prev\" \${OPTS[ARG]}; then
     case \$prev in
         $(generate_case_arg $com)
 esac
 COMPREPLY=( \$(compgen -W '\$comps' -- "\$cur") )
 return 0
+fi
 fi
 
 if [[ \"\$cur\" = -* ]]; then
